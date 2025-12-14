@@ -13,9 +13,10 @@ import { GameState, Role } from '../types';
 
 interface Props {
   history: GameState[];
+  staticChart?: boolean;
 }
 
-export const BullwhipChart: React.FC<Props> = ({ history }) => {
+export const BullwhipChart: React.FC<Props> = ({ history, staticChart = false }) => {
   const data = history.map((state) => ({
     cycle: state.currentCycle,
     CustomerDemand: state.nodes[Role.END_USER].incomingOrder,
@@ -36,11 +37,32 @@ export const BullwhipChart: React.FC<Props> = ({ history }) => {
           />
           <Legend verticalAlign="top" height={36}/>
           {/* End User Demand: Green (Stable-ish) */}
-          <Line type="monotone" dataKey="CustomerDemand" stroke="#22c55e" strokeWidth={3} dot={{ r: 4 }} />
+          <Line 
+            type="monotone" 
+            dataKey="CustomerDemand" 
+            stroke="#22c55e" 
+            strokeWidth={3} 
+            dot={{ r: 4 }} 
+            isAnimationActive={!staticChart}
+          />
           {/* Distributor: Blue (User) */}
-          <Line type="monotone" dataKey="DistributorOrder" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} />
+          <Line 
+            type="monotone" 
+            dataKey="DistributorOrder" 
+            stroke="#3b82f6" 
+            strokeWidth={3} 
+            dot={{ r: 4 }} 
+            isAnimationActive={!staticChart}
+          />
           {/* Manufacturer: Red (Amplified) */}
-          <Line type="monotone" dataKey="ManufacturerOrder" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} />
+          <Line 
+            type="monotone" 
+            dataKey="ManufacturerOrder" 
+            stroke="#ef4444" 
+            strokeWidth={3} 
+            dot={{ r: 4 }} 
+            isAnimationActive={!staticChart}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>

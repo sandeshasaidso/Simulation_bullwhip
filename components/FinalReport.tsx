@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { GameState, Role } from '../types';
 import { BullwhipChart } from './Charts';
-import { Download, Printer, RefreshCcw } from 'lucide-react';
+import { Download, Printer, RefreshCcw, Loader2 } from 'lucide-react';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 interface Props {
   history: GameState[];
@@ -13,7 +15,8 @@ interface Props {
 }
 
 export const FinalReport: React.FC<Props> = ({ history, playerRole, reportContent, loading, onRestart }) => {
-  
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   // Calculate quick stats
   const totalCost = history.reduce((acc, state) => {
     // Simple cost model: Holding ($0.5) + Backlog ($1.0)
@@ -25,6 +28,28 @@ export const FinalReport: React.FC<Props> = ({ history, playerRole, reportConten
   const varianceOrders = calculateVariance(history.map(h => h.nodes[playerRole || Role.DISTRIBUTOR].outgoingOrder));
   const bullwhipRatio = varianceDemand > 0 ? (varianceOrders / varianceDemand).toFixed(2) : "N/A";
 
+  const handleDownloadPdf = () => {
+    const element = document.getElementById('printable-report');
+    if (!element) return;
+
+    setIsGeneratingPdf(true);
+
+    const opt = {
+      margin: [10, 10, 10, 10], // mm
+      filename: `Bullwhip_Report_${playerRole}_${new Date().toISOString().split('T')[0]}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+      setIsGeneratingPdf(false);
+    }).catch((err: any) => {
+      console.error('PDF Generation Error:', err);
+      setIsGeneratingPdf(false);
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 animate-in fade-in duration-500 print:p-0 print:m-0 print:max-w-none print:w-full">
       
@@ -34,14 +59,26 @@ export const FinalReport: React.FC<Props> = ({ history, playerRole, reportConten
           <RefreshCcw size={18} /> New Simulation
         </button>
         <div className="flex gap-3">
-          <button onClick={() => window.print()} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow">
+          <button 
+            onClick={handleDownloadPdf}
+            disabled={loading || isGeneratingPdf}
+            className="flex items-center gap-2 bg-white text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            {isGeneratingPdf ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} 
+            Save as PDF
+          </button>
+          <button 
+            onClick={() => window.print()} 
+            disabled={loading}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow"
+          >
             <Printer size={18} /> Print Report
           </button>
         </div>
       </div>
 
       {/* A4 Page Container */}
-      <div className="bg-white shadow-2xl p-12 min-h-[1123px] w-full max-w-[794px] mx-auto text-slate-900 printable-doc print:shadow-none print:border-none print:m-0 print:w-full print:max-w-none print:p-8">
+      <div id="printable-report" className="bg-white shadow-2xl p-12 min-h-[1123px] w-full max-w-[794px] mx-auto text-slate-900 printable-doc print:shadow-none print:border-none print:m-0 print:w-full print:max-w-none print:p-8">
         
         {/* Header */}
         <div className="border-b-4 border-indigo-900 pb-6 mb-8 flex justify-between items-end">
@@ -78,7 +115,8 @@ export const FinalReport: React.FC<Props> = ({ history, playerRole, reportConten
         <div className="mb-10 break-inside-avoid">
           <h2 className="text-lg font-bold text-slate-800 mb-4 border-l-4 border-indigo-500 pl-3">Performance Visualization</h2>
           <div className="h-64 bg-slate-50 border border-slate-200 rounded p-2 print:bg-white print:border-slate-300">
-            <BullwhipChart history={history} />
+            {/* Disable animation for print clarity */}
+            <BullwhipChart history={history} staticChart={true} />
           </div>
         </div>
 
@@ -110,8 +148,11 @@ export const FinalReport: React.FC<Props> = ({ history, playerRole, reportConten
             margin: 0;
             size: auto;
           }
-          body { 
-            background: white !important; 
+          html, body {
+            background: white !important;
+            height: auto !important;
+            overflow: visible !important;
+            width: 100% !important;
           }
           /* Hide everything outside the root if needed, but since we are replacing the view, standard hiding should suffice */
           .no-print { display: none !important; }
